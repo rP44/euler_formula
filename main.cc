@@ -20,10 +20,10 @@ int main( int argc, char** argv )
     return EXIT_FAILURE;
   }
 
-  const size_t NUMBER_OF_MEMBER  { ( size_t )std::stoul( argv[ 1 ] ) };
-  const size_t NUMBER_OF_FUNCTION{ ( size_t )std::stoul( argv[ 2 ] ) };
+  const size_t NUMBER_OF_MEMBER  { static_cast< size_t >( std::stoul( argv[ 1 ] ) ) };
+  const size_t NUMBER_OF_FUNCTION{ static_cast< size_t >( std::stoul( argv[ 2 ] ) ) };
   /// используется только если выбрана фукция #3
-  const size_t COUNT_OF_THREADS  { ( size_t )std::stoul( argv[ 3 ] ) };
+  const size_t COUNT_OF_THREADS  { static_cast< size_t >( std::stoul( argv[ 3 ] ) ) };
 
   tbb::task_scheduler_init init{ static_cast< int >( COUNT_OF_THREADS ) };
   Euler euler;
@@ -32,8 +32,9 @@ int main( int argc, char** argv )
   const auto ANSWER = euler.get_member( NUMBER_OF_MEMBER, NUMBER_OF_FUNCTION );
   const auto stop   = std::chrono::high_resolution_clock::now();
 
-  std::cout << format( "N == %1%\n%2%\n", NUMBER_OF_MEMBER, ANSWER ) << std::endl;
+  std::cout << format( "N == %1%\n%2%", NUMBER_OF_MEMBER, ANSWER ) << std::endl;
   print_time( stop - start );
+  std::cout << std::endl;
 
   return EXIT_SUCCESS;
 }

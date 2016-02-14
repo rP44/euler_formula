@@ -1,5 +1,5 @@
 #include <tbb/blocked_range.h>
-#include <tbb/parallel_for.h>
+#include <tbb/parallel_reduce.h>
 #include "euler.hh"
 
 class Euler::Multiplyer
@@ -9,22 +9,28 @@ public:
     parent_{ parent }
   {}
 
-  void operator()( const tbb::blocked_range< size_t >& range ) const
+  Multiplyer( const Multiplyer& other, tbb::split ) :
+    parent_{ other.parent_ }
+  {}
+
+  void join( const Multiplyer& other )
+  {
+    sum_ += other.sum_;
+  }
+
+  LongNumber get() { return std::move( sum_ ); }
+
+  void operator()( const tbb::blocked_range< size_t >& range )
   {
     const size_t CACHE_SIZE = parent_->cache_.size();
 
-    /// сумма произведений подинтервала
-    LongNumber sum;
-
     for ( size_t i = range.begin(); i != range.end(); ++i )
-      sum += parent_->cache_[ i ] * parent_->cache_[ CACHE_SIZE - i - 1 ];
-
-    std::lock_guard< std::mutex > lock( parent_->sum_guard_ );
-    parent_->sum_ += sum;
+      sum_ += parent_->cache_[ i ] * parent_->cache_[ CACHE_SIZE - i - 1 ];
   }
 
 private:
-  Euler* const parent_;
+  Euler* const parent_; ///< указатель для доступа к кешу
+  LongNumber      sum_; ///< сумма произведений подинтервала
 };
 
 Euler::Euler()
@@ -94,10 +100,12 @@ LongNumber Euler::get_member3( size_t number_of_member )
 
   while ( size <= number_of_member )
   {
-    sum_ = 0;
+    Multiplyer multiplyer( this );
 
-    tbb::parallel_for( tbb::blocked_range< size_t >( 0, size / 2 ),
-                       Multiplyer( this ) );
+    tbb::parallel_reduce( tbb::blocked_range< size_t >( 0, size / 2 ),
+                          multiplyer );
+
+    sum_ = multiplyer.get();
     sum_ <<= 1;
 
     if ( size % 2 )
